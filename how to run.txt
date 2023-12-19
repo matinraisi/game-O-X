@@ -1,0 +1,15 @@
+Running the game in the cmd because of Persian commands
+
+The first step is to run the file server -- python server.py
+
+
+The next step after running the server
+
+Open two cmd for two players
+
+Run the client file in those two cmd
+
+
+--- python client.py 
+
+Now let two players play
