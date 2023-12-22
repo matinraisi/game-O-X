@@ -1,35 +1,43 @@
 import socket
+import threading
 
 class TicTacToeClient:
     def __init__(self):
-        self.host = '127.0.0.1'  
-        self.port = 5555 
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.name = ""
+        self.host = '127.0.0.1'  # آدرس IP سرور
+        self.port = 9999  # پورت سرور
+        self.client_socket = None
 
-    def connect(self):
-        self.client.connect((self.host, self.port))
-        self.name = input("لطفاً نام خود را وارد کنید: ")
-        self.client.send(self.name.encode())
-        message = self.client.recv(1024).decode()
-        print(message)
+    def start(self):
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.connect((self.host, self.port))
 
-    def play(self):
+        player_name = input('لطفاً نام خود را وارد کنید: ')
+        self.client_socket.send(player_name.encode())
+
+        print(self.client_socket.recv(1024).decode())
+
+        self.receive_messages()
+
+    def receive_messages(self):
         while True:
-            try:
-                map_data = self.client.recv(1024).decode()
-                if map_data.startswith("برنده") or map_data == "تساوی!":
-                    print(map_data)
-                    break
-                else:
-                    print(map_data)
-                    position = input("لطفاً موقعیت مورد نظر را انتخاب کنید (0-8): ")
-                    self.client.send(position.encode())
-            except ConnectionResetError:
-                print("اتصال قطع شد.")
+            message = self.client_socket.recv(1024).decode()
+            print(message)
+
+            if 'برنده است!' in message or 'بازی مساوی شد!' in message:
+                self.client_socket.close()
                 break
+
+            if 'نوبت شماست. انتخاب یک خانه (1-9): ' in message:
+                valid_moves = [str(i + 1) for i in range(9) if self.is_valid_move(i + 1)]
+                print('حرکت‌های معتبر:', ', '.join(valid_moves))
+                move = input()
+                self.client_socket.send(move.encode())
+
+    def is_valid_move(self, move):
+        # اینجا قوانین اعتبارسنجی حرکت را پیاده‌سازی کنید
+        # مثال: بررسی این که حرکت در بازه 1 تا 9 باشد و خانه‌ای که قبلاً انتخاب نشده است
+        return True
 
 if __name__ == '__main__':
     client = TicTacToeClient()
-    client.connect()
-    client.play()
+    client.start()
