@@ -1,35 +1,34 @@
 import socket
 import threading
 
-class TicTacToeClient:
-    def __init__(self):
-        self.host = '127.0.0.1'  # آدرس IP سرور
-        self.port = 9999  # پورت سرور
-        self.client_socket = None
+# تعیین IP و پورت سرور
+SERVER_IP = '127.0.0.1'
+SERVER_PORT = 12345
 
-    def start(self):
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_socket.connect((self.host, self.port))
+# ایجاد سوکت برای کلاینت
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((SERVER_IP, SERVER_PORT))
 
-        player_name = input('Enter your name: ')
-        self.client_socket.send(player_name.encode())
+# دریافت نام از کاربر
+player_name = input("Enter your name: ")
+client_socket.send(player_name.encode())
 
-        print(self.client_socket.recv(1024).decode())
+# تابع برای گوش دادن به پیام‌های سرور
+def receive_messages():
+    while True:
+        message = client_socket.recv(1024).decode()
+        print(message)
 
-        self.receive_messages()
+# شروع یک نخ برای گوش دادن به پیام‌های سرور
+receive_thread = threading.Thread(target=receive_messages)
+receive_thread.start()
 
-    def receive_messages(self):
-        while True:
-            message = self.client_socket.recv(1024).decode()
-            print(message)
+# تابع برای ارسال حرکت به سرور
+def send_move():
+    while True:
+        move = input("Enter your move (1-9): ")
+        client_socket.send(move.encode())
 
-            if 'wins!' in message or 'equalised' in message:
-                self.client_socket.close()
-                break
-
-            move = input('Your move (1-9): ')
-            self.client_socket.send(move.encode())
-
-if __name__ == '__main__':
-    client = TicTacToeClient()
-    client.start()
+# شروع یک نخ برای ارسال حرکت
+send_thread = threading.Thread(target=send_move)
+send_thread.start()
