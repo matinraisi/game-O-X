@@ -26,7 +26,7 @@ class TicTacToeServer:
             self.player_names.append(player_name)
             client_socket.send('You have entered the game.'.encode())
 
-        self.broadcast('The game is ready. start!')
+        self.broadcast('The game is ready. Start!')
         self.play_game()
 
     def broadcast(self, message):
@@ -36,7 +36,7 @@ class TicTacToeServer:
     def play_game(self):
         while True:
             current_client_socket = self.client_sockets[self.current_player]
-            current_client_socket.send('it s your turn Choosing a house (1-9) : '.encode())
+            current_client_socket.send('It\'s your turn. Choose a house (1-9): '.encode())
             move = int(current_client_socket.recv(1024).decode()) - 1
 
             if self.is_valid_move(move):
@@ -44,7 +44,7 @@ class TicTacToeServer:
                 self.broadcast_board()
 
                 if self.is_winner():
-                    self.broadcast('player {} The  wins!'.format(self.player_names[self.current_player]))
+                    self.broadcast('Player {} wins!'.format(self.player_names[self.current_player]))
                     self.broadcast_board()
                     break
 
@@ -55,7 +55,7 @@ class TicTacToeServer:
 
                 self.current_player = 1 - self.current_player
             else:
-                current_client_socket.send('The move is invalid. try again'.encode())
+                current_client_socket.send('The move is invalid. Try again.'.encode())
 
     def is_valid_move(self, move):
         return move >= 0 and move < 9 and self.board[move] == ' '

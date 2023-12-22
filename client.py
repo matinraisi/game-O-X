@@ -11,7 +11,7 @@ class TicTacToeClient:
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.host, self.port))
 
-        player_name = input('enter your name: ')
+        player_name = input('Enter your name: ')
         self.client_socket.send(player_name.encode())
 
         print(self.client_socket.recv(1024).decode())
@@ -23,20 +23,12 @@ class TicTacToeClient:
             message = self.client_socket.recv(1024).decode()
             print(message)
 
-            if 'is the winner!' in message or 'The game equalised!' in message:
+            if 'wins!' in message or 'equalised' in message:
                 self.client_socket.close()
                 break
 
-            if 'it s your turn Choosing a house (1-9): ' in message:
-                valid_moves = [str(i + 1) for i in range(9) if self.is_valid_move(i + 1)]
-                print('Valid moves:', ', '.join(valid_moves))
-                move = input()
-                self.client_socket.send(move.encode())
-
-    def is_valid_move(self, move):
-        # اینجا قوانین اعتبارسنجی حرکت را پیاده‌سازی کنید
-        # مثال: بررسی این که حرکت در بازه 1 تا 9 باشد و خانه‌ای که قبلاً انتخاب نشده است
-        return True
+            move = input('Your move (1-9): ')
+            self.client_socket.send(move.encode())
 
 if __name__ == '__main__':
     client = TicTacToeClient()
