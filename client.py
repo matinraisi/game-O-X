@@ -11,7 +11,7 @@ class TicTacToeClient:
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.host, self.port))
 
-        player_name = input('لطفاً نام خود را وارد کنید: ')
+        player_name = input('enter your name: ')
         self.client_socket.send(player_name.encode())
 
         print(self.client_socket.recv(1024).decode())
@@ -23,13 +23,13 @@ class TicTacToeClient:
             message = self.client_socket.recv(1024).decode()
             print(message)
 
-            if 'برنده است!' in message or 'بازی مساوی شد!' in message:
+            if 'is the winner!' in message or 'The game equalised!' in message:
                 self.client_socket.close()
                 break
 
-            if 'نوبت شماست. انتخاب یک خانه (1-9): ' in message:
+            if 'it s your turn Choosing a house (1-9): ' in message:
                 valid_moves = [str(i + 1) for i in range(9) if self.is_valid_move(i + 1)]
-                print('حرکت‌های معتبر:', ', '.join(valid_moves))
+                print('Valid moves:', ', '.join(valid_moves))
                 move = input()
                 self.client_socket.send(move.encode())
 

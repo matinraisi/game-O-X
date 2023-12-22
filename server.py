@@ -15,18 +15,18 @@ class TicTacToeServer:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(2)
-        print('سرور شروع به کار کرد. در انتظار اتصال دو بازیکن...')
+        print('The server started. Waiting for two players to connect...')
 
         while len(self.client_sockets) < 2:
             client_socket, address = self.server_socket.accept()
             self.client_sockets.append(client_socket)
-            print('اتصال برقرار شد: {}'.format(address))
+            print('Connection established: {}'.format(address))
 
             player_name = client_socket.recv(1024).decode()
             self.player_names.append(player_name)
-            client_socket.send('شما به بازی وارد شدید.'.encode())
+            client_socket.send('You have entered the game.'.encode())
 
-        self.broadcast('بازی آماده است. شروع کنید!')
+        self.broadcast('The game is ready. start!')
         self.play_game()
 
     def broadcast(self, message):
@@ -36,7 +36,7 @@ class TicTacToeServer:
     def play_game(self):
         while True:
             current_client_socket = self.client_sockets[self.current_player]
-            current_client_socket.send('نوبت شماست. انتخاب یک خانه (1-9): '.encode())
+            current_client_socket.send('it s your turn Choosing a house (1-9) : '.encode())
             move = int(current_client_socket.recv(1024).decode()) - 1
 
             if self.is_valid_move(move):
@@ -44,18 +44,18 @@ class TicTacToeServer:
                 self.broadcast_board()
 
                 if self.is_winner():
-                    self.broadcast('بازیکن {} برنده است!'.format(self.player_names[self.current_player]))
+                    self.broadcast('player {} The  wins!'.format(self.player_names[self.current_player]))
                     self.broadcast_board()
                     break
 
                 if self.is_board_full():
-                    self.broadcast('بازی مساوی شد!')
+                    self.broadcast('The game equalised!')
                     self.broadcast_board()
                     break
 
                 self.current_player = 1 - self.current_player
             else:
-                current_client_socket.send('حرکت نامعتبر است. دوباره امتحان کنید.'.encode())
+                current_client_socket.send('The move is invalid. try again'.encode())
 
     def is_valid_move(self, move):
         return move >= 0 and move < 9 and self.board[move] == ' '
