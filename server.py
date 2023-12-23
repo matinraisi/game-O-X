@@ -1,111 +1,115 @@
 import socket
 import threading
 
-# تعیین IP و پورت برای سرور
-SERVER_IP = '127.0.0.1'
-SERVER_PORT = 12345
+HOST = '127.0.0.1'
+PORT = 12345
 
-# ایجاد سوکت برای سرور
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((SERVER_IP, SERVER_PORT))
-server_socket.listen()
+server_socket.bind((HOST, PORT))
+server_socket.listen(2)
 
-print(f"[*] Server is listening on {SERVER_IP}:{SERVER_PORT}")
+print('سرور آماده است. در انتظار اتصال دو کلاینت...')
 
-# لیستی برای نگه‌داری اطلاعات هر کلاینت
 clients = []
-player_names = {}
-current_turn = 0
-board = ['-'] * 9
+client_names = []
 
-# تابع برای مدیریت هر کلاینت
-def handle_client(client_socket):
-    global current_turn
-    try:
-        # دریافت نام اولیه از کلاینت
-        player_name = client_socket.recv(1024).decode()
-        print(f"[*] {player_name} connected.")
+# ماتریس بازی
+game_board = [[' ' for _ in range(3)] for _ in range(3)]
 
-        # اضافه کردن کلاینت به لیست
-        clients.append(client_socket)
-        player_names[client_socket] = player_name
-
-        # ارسال نام به کلاینت
-        client_socket.send("Connected to the server. Waiting for other players...".encode())
-
-        # چک کردن آیا تعداد کلاینت‌ها کافی است یا نه
-        if len(clients) == 2:
-            # ارسال پیام به هر دو کلاینت برای شروع بازی
-            broadcast("Both players are connected. Let's start the game!")
-
-            # شروع بازی
-            play_game()
-    except Exception as e:
-        print(f"[*] Client disconnected: {e}")
-        clients.remove(client_socket)
-        del player_names[client_socket]
-        broadcast_board()
-
-# تابع برای ارسال پیام به همه کلاینت‌ها
-def broadcast(message):
-    for client in clients:
-        client.send(message.encode())
-
-# تابع برای ارسال نقشه به همه کلاینت‌ها
-def broadcast_board():
-    global board
-    for client in clients:
-        client.send(str(board).encode())
-
-# تابع برای شروع بازی
-def play_game():
-    global current_turn, board
-    while True:
-        current_player = clients[current_turn % 2]
-
-        current_player.send("Your turn. Enter a move (1-9): ".encode())
-        move = int(current_player.recv(1024).decode()) - 1
-
-        if 0 <= move < 9 and board[move] == '-':
-            board[move] = 'X' if current_turn % 2 == 0 else 'O'
-            current_turn += 1
-            broadcast_board()
-
-            if check_winner():
-                broadcast(f"{player_names[current_player]} won!")
-                reset_game()
-            elif '-' not in board:
-                broadcast("It's a tie!")
-                reset_game()
-        else:
-            current_player.send("Invalid move. Try again.".encode())
-
-# تابع برای بررسی برنده
+# تابع کمکی برای چک کردن برنده
 def check_winner():
-    winner_combinations = [(0, 1, 2), (3, 4, 5), (6, 7, 8),
-                           (0, 3, 6), (1, 4, 7), (2, 5, 8),
-                           (0, 4, 8), (2, 4, 6)]
+    for row in game_board:
+        if row[0] == row[1] == row[2] != ' ':
+            return row[0]
 
-    for combination in winner_combinations:
-        if board[combination[0]] == board[combination[1]] == board[combination[2]] != '-':
-            return True
+    for col in range(3):
+        if game_board[0][col] == game_board[1][col] == game_board[2][col] != ' ':
+            return game_board[0][col]
 
-    return False
+    if game_board[0][0] == game_board[1][1] == game_board[2][2] != ' ':
+        return game_board[0][0]
 
-# تابع برای بازنشانی بازی
-def reset_game():
-    global board, current_turn
-    board = ['-'] * 9
-    current_turn = 0
-    broadcast_board()
-    play_game()
+    if game_board[0][2] == game_board[1][1] == game_board[2][0] != ' ':
+        return game_board[0][2]
 
-# تابع اصلی برای گوش دادن به اتصالات ورودی
-def main():
+    if all(game_board[i][j] != ' ' for i in range(3) for j in range(3)):
+        return 'تساوی'
+
+    return None
+
+# تابع کمکی برای تغییر نوبت
+def switch_turn():
+    global turn_player
+    turn_player = 1 - turn_player
+
+def handle_client(client, name):
+    global turn_player
+
+    # اطلاعات اولیه ارسال می‌شود
+    client.sendall(f'نام حریف شما: {client_names[1 - clients.index(client)]}'.encode())
+
     while True:
-        client_socket, addr = server_socket.accept()
-        client_thread = threading.Thread(target=handle_client, args=(client_socket,))
-        client_thread.start()
+        try:
+            # دریافت انتخاب بازی از بازیکن فعلی
+            choice = int(client.recv(1024).decode()) - 1
+            row, col = divmod(choice, 3)
 
-if __name__ == "__main__":
-    main()
+            # بررسی صحت انتخاب
+            if game_board[row][col] == ' ':
+                # بروزرسانی ماتریس بازی
+                game_board[row][col] = 'X' if clients.index(client) == 0 else 'O'
+
+                # ارسال نتیجه به هر دو کلاینت
+            for c in clients:
+                c.sendall(f'ماتریس بازی:\n{game_board[0][0]} | {game_board[0][1]} | {game_board[0][2]}\n'
+                        f'---------\n'
+                        f'{game_board[1][0]} | {game_board[1][1]} | {game_board[1][2]}\n'
+                        f'---------\n'
+                        f'{game_board[2][0]} | {game_board[2][1]} | {game_board[2][2]}\n'
+                        f'نتیجه: {check_winner()}'.encode())
+
+                # بررسی پایان بازی
+                # بررسی پایان بازی
+                winner = check_winner()
+                if winner or winner == 'تساوی':
+                    for c in clients:
+                        c.sendall(f'نتیجه: {winner}'.encode())
+                    break
+
+                # تغییر نوبت بازیکن
+                switch_turn()
+
+                # ارسال نوبت جدید به هر دو کلاینت
+                for c in clients:
+                    c.sendall(f'نوبت بازی: {client_names[turn_player]}'.encode())
+
+        except (ValueError, IndexError):
+            print('خطا در دریافت داده از کلاینت.')
+            break
+
+    # بستن اتصال با کلاینت
+    client.close()
+
+while len(clients) < 2:
+    client_socket, _ = server_socket.accept()
+    client_name = client_socket.recv(1024).decode()
+    clients.append(client_socket)
+    client_names.append(client_name)
+    print(f'کلاینت {client_name} به سرور متصل شد.')
+
+# ارسال نام کلاینت به هر دو کلاینت
+for c in clients:
+    c.sendall(f'نام حریف شما: {client_names[1 - clients.index(c)]}'.encode())
+
+# نوبت بازیکن اول
+turn_player = 0
+
+# ارسال نوبت بازی به هر دو کلاینت
+for c in clients:
+    c.sendall(f'نوبت بازی: {client_names[turn_player]}'.encode())
+
+# هنگامی که هر دو کلاینت وصل شده‌اند، مسئول ایجاد ترد جدید برای هر کلاینت می‌شود
+threading.Thread(target=handle_client, args=(clients[0], client_names[0])).start()
+threading.Thread(target=handle_client, args=(clients[1], client_names[1])).start()
+
+
