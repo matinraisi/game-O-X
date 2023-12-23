@@ -8,15 +8,15 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((HOST, PORT))
 server_socket.listen(2)
 
-print('سرور آماده است. در انتظار اتصال دو کلاینت...')
+print('Server is ready. Waiting for two clients to connect...')
 
 clients = []
 client_names = []
 
-# ماتریس بازی
+
 game_board = [[' ' for _ in range(3)] for _ in range(3)]
 
-# تابع کمکی برای چک کردن برنده
+
 def check_winner():
     for row in game_board:
         if row[0] == row[1] == row[2] != ' ':
@@ -33,11 +33,11 @@ def check_winner():
         return game_board[0][2]
 
     if all(game_board[i][j] != ' ' for i in range(3) for j in range(3)):
-        return 'تساوی'
+        return 'Draw'
 
     return None
 
-# تابع کمکی برای تغییر نوبت
+
 def switch_turn():
     global turn_player
     turn_player = 1 - turn_player
@@ -45,49 +45,47 @@ def switch_turn():
 def handle_client(client, name):
     global turn_player
 
-    # اطلاعات اولیه ارسال می‌شود
-    client.sendall(f'نام حریف شما: {client_names[1 - clients.index(client)]}'.encode())
+    client.sendall(f'Your opponent\'s name is: {client_names[1 - clients.index(client)]}'.encode())
 
     while True:
         try:
-            # دریافت انتخاب بازی از بازیکن فعلی
+
             choice = int(client.recv(1024).decode()) - 1
             row, col = divmod(choice, 3)
 
-            # بررسی صحت انتخاب
+
             if game_board[row][col] == ' ':
-                # بروزرسانی ماتریس بازی
+
                 game_board[row][col] = 'X' if clients.index(client) == 0 else 'O'
 
-                # ارسال نتیجه به هر دو کلاینت
-            for c in clients:
-                c.sendall(f'ماتریس بازی:\n{game_board[0][0]} | {game_board[0][1]} | {game_board[0][2]}\n'
-                        f'---------\n'
-                        f'{game_board[1][0]} | {game_board[1][1]} | {game_board[1][2]}\n'
-                        f'---------\n'
-                        f'{game_board[2][0]} | {game_board[2][1]} | {game_board[2][2]}\n'
-                        f'نتیجه: {check_winner()}'.encode())
 
-                # بررسی پایان بازی
-                # بررسی پایان بازی
+                for c in clients:
+                    c.sendall(f'Game board:\n{game_board[0][0]} | {game_board[0][1]} | {game_board[0][2]}\n'
+                              f'---------\n'
+                              f'{game_board[1][0]} | {game_board[1][1]} | {game_board[1][2]}\n'
+                              f'---------\n'
+                              f'{game_board[2][0]} | {game_board[2][1]} | {game_board[2][2]}\n'
+                              f'Result: {check_winner()}'.encode())
+
+
                 winner = check_winner()
-                if winner or winner == 'تساوی':
+                if winner or winner == 'Draw':
                     for c in clients:
-                        c.sendall(f'نتیجه: {winner}'.encode())
+                        c.sendall(f'Result: {winner}'.encode())
                     break
 
-                # تغییر نوبت بازیکن
+
                 switch_turn()
 
-                # ارسال نوبت جدید به هر دو کلاینت
+
                 for c in clients:
-                    c.sendall(f'نوبت بازی: {client_names[turn_player]}'.encode())
+                    c.sendall(f'Turn: {client_names[turn_player]}'.encode())
 
         except (ValueError, IndexError):
-            print('خطا در دریافت داده از کلاینت.')
+            print('Error receiving data from the client.')
             break
 
-    # بستن اتصال با کلاینت
+
     client.close()
 
 while len(clients) < 2:
@@ -95,21 +93,18 @@ while len(clients) < 2:
     client_name = client_socket.recv(1024).decode()
     clients.append(client_socket)
     client_names.append(client_name)
-    print(f'کلاینت {client_name} به سرور متصل شد.')
+    print(f'Client {client_name} connected to the server.')
 
-# ارسال نام کلاینت به هر دو کلاینت
+
 for c in clients:
-    c.sendall(f'نام حریف شما: {client_names[1 - clients.index(c)]}'.encode())
+    c.sendall(f'Your opponent\'s name is: {client_names[1 - clients.index(c)]}'.encode())
 
-# نوبت بازیکن اول
+
 turn_player = 0
 
-# ارسال نوبت بازی به هر دو کلاینت
-for c in clients:
-    c.sendall(f'نوبت بازی: {client_names[turn_player]}'.encode())
 
-# هنگامی که هر دو کلاینت وصل شده‌اند، مسئول ایجاد ترد جدید برای هر کلاینت می‌شود
+for c in clients:
+    c.sendall(f'Turn: {client_names[turn_player]}'.encode())
+
 threading.Thread(target=handle_client, args=(clients[0], client_names[0])).start()
 threading.Thread(target=handle_client, args=(clients[1], client_names[1])).start()
-
-
